@@ -1,0 +1,16 @@
+ShutdownStart:
+.db $BB
+.dw EndShutdown-Shutdown
+.db "shutdown.exe", 0 
+.fill (ShutdownStart + 24)-$
+
+.org $D000
+
+Shutdown:
+	ld a, $02
+	out ($10), a ; disable screen
+	call WaitForLCD
+	
+	call Sleep
+	jp kernelboot
+EndShutdown:

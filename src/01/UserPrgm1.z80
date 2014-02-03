@@ -1,0 +1,10 @@
+UserPrgm1Start:
+.db $BB
+.dw EndOfUserPrgm1-UserPrgm1
+.db "User.exe", 0 
+.fill (UserPrgm1Start + 24)-$
+
+.org $D000
+UserPrgm1:
+	ret
+EndOfUserPrgm1:

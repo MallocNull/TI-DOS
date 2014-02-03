@@ -1,0 +1,91 @@
+sysInt:
+	di
+	exx
+	ex af, af'
+	in a, (4)
+	
+	bit 0, a
+	jp nz, handleOn
+	
+	bit 1, a
+	jp nz, handleTimer1
+	
+	bit 2, a
+	jp nz, handleTimer2
+	
+	bit 4, a
+	jp nz, handleLink
+	
+	;jp sysIntDone
+	ex af, af'
+	exx
+	ei
+	jp boot
+handleOn:
+	; ack int
+	in a, (3)
+	res 0, a
+	out (3), a
+	set 0, a
+	out (3), a
+	
+	jp sysIntDone
+handleTimer1:
+	; ack int
+	in a, (3)
+	res 1, a
+	out (3), a
+	set 1, a
+	out (3), a
+	
+	ld a, (CLOCK)
+	cp 0
+	jp z, timer1IncTime
+	dec a
+	ld (CLOCK), a
+	
+	ld a, (CLOCK+10)
+	cp 50
+	call z, ToggleCursor
+	jp nz, _
+	ld a, 0
+	ld (CLOCK+10), a
+	jp sysIntDone
+	
+_:	inc a
+	ld (CLOCK+10), a
+	jp sysIntDone
+timer1IncTime:
+	;ld hl, string
+	;call PrintString
+	
+	ld hl, (CLOCK+1)
+	inc hl
+	ld (CLOCK+1), hl
+	ld a, 118
+	ld (CLOCK), a
+	jp sysIntDone
+handleTimer2:
+	; ack int
+	in a, (3)
+	res 2, a
+	out (3), a
+	set 2, a
+	out (3), a
+	
+	jp sysIntDone
+handleLink:
+	; ack int
+	in a, (3)
+	res 4, a
+	out (3), a
+	set 4, a
+	out (3), a
+	
+	; int code
+sysIntDone:
+	ex af, af'
+	exx
+	ei
+	ret
+	

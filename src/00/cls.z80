@@ -1,0 +1,11 @@
+ClearStart:
+.db $BB
+.dw EndClear-Clear
+.db "cls.exe", 0 
+.fill (ClearStart + 24)-$
+
+.org $D000
+Clear:
+	call ClearScreen
+	ret
+EndClear:

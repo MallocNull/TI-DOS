@@ -1,0 +1,20 @@
+SleeperStart:
+.db $BB
+.dw EndSleep-Sleeper
+.db "sleep.exe", 0 
+.fill (SleeperStart + 24)-$
+
+.org $D000
+
+Sleeper:
+	ld a, $02
+	out ($10), a ; disable screen
+	call WaitForLCD
+	
+	call Sleep
+	
+	ld a, $03
+	out ($10), a ; enable screen
+	call WaitForLCD
+	ret
+EndSleep:

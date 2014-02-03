@@ -1,0 +1,33 @@
+.org $0000
+
+#define SYSPROG $2000 ; todo figure out if i can decrease this later
+#define SYSRESERVE $8000
+#define FREEMEM $9000
+#define PROGRAMRESERVE $D000
+#define STACKRESERVE $F000
+
+#define SCREENBLOCK $8000
+#define SCREENPTR $8000+(16*8)
+#define KEYBUF $8200
+#define CLOCK $8C00
+
+#define CAPS $8AAA
+#define NUMS $8AAB
+
+#include "header.z80"
+#include "interrupts.z80"
+#include "kernel.z80"
+#include "utils.z80"
+#include "display.z80"
+#include "memory.z80"
+#include "filesystem.z80"
+#include "keyboard.z80"
+#include "characters.z80"
+.fill SYSPROG-$, $ff
+; system programs
+#include "dir.z80"
+#include "cp.z80"
+#include "cls.z80"
+#include "sleep.z80"
+#include "shutdown.z80"
+#include "cd.z80"

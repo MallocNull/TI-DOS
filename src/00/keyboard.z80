@@ -1,0 +1,568 @@
+#include "keydefs.z80"
+;#define TOGGLE
+
+; gets a line from the user
+; inputs:
+;	hl: string ptr
+; outputs:
+;	hl: string ptr
+getLine:
+	ld ($8ABA), hl
+getLineLoop:
+	
+	ld bc, 20000
+feedbackLoop:	
+	nop
+	dec bc
+	xor a
+	or b
+	or c
+	cp 0
+	jp nz, feedbackLoop
+	
+	push hl
+	call getChar
+	pop hl
+	ld (hl), a
+	cp 0
+	jp z, getLineLoop
+	cp 13
+	jp z, getLineExit
+	cp 8
+	jp z, getLineBackspace
+	push hl
+	call PrintChar
+	pop hl
+	inc hl
+	jp getLineLoop
+getLineBackspace:
+	push hl
+	ld de, ($8ABA)
+	ccf
+	sbc hl, de
+	inc hl
+	xor a \ or h \ or l
+	cp 0
+	pop hl
+	jp z, getLineLoop
+	dec hl
+	ld (hl), 0
+	push hl
+	ld hl, (SCREENPTR)
+	dec hl
+	ld (SCREENPTR), hl
+	inc hl
+	ld (hl), 0
+	
+	call DrawScreenBuffer
+	pop hl
+	jp getLineLoop
+getLineExit:
+	ld (hl), 0
+	ld a, 0
+	ld hl, (SCREENPTR)
+	ld (hl), a
+	ld a, 10
+	call PrintChar
+	ld hl, ($8ABA)
+	ret
+
+; gets a character representation of a key
+; outputs:
+;	a: key (in ascii)
+getChar:
+	xor a
+waitForKeyPress:
+	call getKeyMatrix
+
+	ld a, (KENTER)
+	cp 1
+	jp nz, _
+	ld a, 13
+	ret
+_:	ld a, (KDEL)
+	cp 1
+	jp nz, _
+	ld a, 8
+	ret
+_:	
+#ifdef TOGGLE
+	ld a, (KALPHA)
+	cp 1
+	jp z, numericTests
+	
+	ld a, (KSECOND)
+	cp 1
+	jp z, capitalizedTests
+#else
+	ld a, (KALPHA)
+	cp 1
+	jp nz, _
+	ld a, (NUMS)
+	xor 1
+	ld (NUMS), a
+	ld a, 0
+	ret
+_:	
+	
+	ld a, (KSECOND)
+	cp 1
+	jp nz, _
+	ld a, (CAPS)
+	xor 1
+	ld (CAPS), a
+	ld a, 0
+	ret
+_:	
+
+	ld a, (NUMS)
+	cp 1
+	jp z, numericTests
+	
+	ld a, (CAPS)
+	cp 1
+	jp z, capitalizedTests
+#endif
+	ld a, (KMATH)
+	cp 1
+	jp nz, _
+	ld a, 'a'
+	ret
+_:	ld a, (KAPPS)
+	cp 1
+	jp nz, _
+	ld a, 'b'
+	ret
+_:	ld a, (KPRGM)
+	cp 1
+	jp nz, _
+	ld a, 'c'
+	ret
+_:	ld a, (KINV)
+	cp 1
+	jp nz, _
+	ld a, 'd'
+	ret
+_:	ld a, (KSIN)
+	cp 1
+	jp nz, _
+	ld a, 'e'
+	ret
+_:	ld a, (KCOS)
+	cp 1
+	jp nz, _
+	ld a, 'f'
+	ret
+_:	ld a, (KTAN)
+	cp 1
+	jp nz, _
+	ld a, 'g'
+	ret
+_:	ld a, (KPOW)
+	cp 1
+	jp nz, _
+	ld a, 'h'
+	ret
+_:	ld a, (KSQR)
+	cp 1
+	jp nz, _
+	ld a, 'i'
+	ret
+_:	ld a, (KCOMMA)
+	cp 1
+	jp nz, _
+	ld a, 'j'
+	ret
+_:	ld a, (KLPAREN)
+	cp 1
+	jp nz, _
+	ld a, 'k'
+	ret
+_:	ld a, (KRPAREN)
+	cp 1
+	jp nz, _
+	ld a, 'l'
+	ret
+_:	ld a, (KDIV)
+	cp 1
+	jp nz, _
+	ld a, 'm'
+	ret
+_:	ld a, (KLOG)
+	cp 1
+	jp nz, _
+	ld a, 'n'
+	ret
+_:	ld a, (KSEVEN)
+	cp 1
+	jp nz, _
+	ld a, 'o'
+	ret
+_:	ld a, (KEIGHT)
+	cp 1
+	jp nz, _
+	ld a, 'p'
+	ret
+_:	ld a, (KNINE)
+	cp 1
+	jp nz, _
+	ld a, 'q'
+	ret
+_:	ld a, (KMULT)
+	cp 1
+	jp nz, _
+	ld a, 'r'
+	ret
+_:	ld a, (KLN)
+	cp 1
+	jp nz, _
+	ld a, 's'
+	ret
+_:	ld a, (KFOUR)
+	cp 1
+	jp nz, _
+	ld a, 't'
+	ret
+_:	ld a, (KFIVE)
+	cp 1
+	jp nz, _
+	ld a, 'u'
+	ret
+_:	ld a, (KSIX)
+	cp 1
+	jp nz, _
+	ld a, 'v'
+	ret
+_:	ld a, (KMINUS)
+	cp 1
+	jp nz, _
+	ld a, 'w'
+	ret
+_:	ld a, (KSTO)
+	cp 1
+	jp nz, _
+	ld a, 'x'
+	ret
+_:	ld a, (KONE)
+	cp 1
+	jp nz, _
+	ld a, 'y'
+	ret
+_:	ld a, (KTWO)
+	cp 1
+	jp nz, _
+	ld a, 'z'
+	ret
+_:	ld a, (KTHREE)
+	cp 1
+	jp nz, _
+	ld a, '~'
+	ret
+_:	ld a, (KPLUS)
+	cp 1
+	jp nz, _
+	ld a, '"' ;"
+	ret
+_:	ld a, (KZERO)
+	cp 1
+	jp nz, _
+	ld a, ' '
+	ret
+_:	ld a, (KPERIOD)
+	cp 1
+	jp nz, _
+	ld a, '.'
+	ret
+_:	ld a, (KNEG)
+	cp 1
+	jp nz, _
+	ld a, '?'
+	ret
+_:	jp endTests
+capitalizedTests:
+	ld a, (KMATH)
+	cp 1
+	jp nz, _
+	ld a, 'A'
+	ret
+_:	ld a, (KAPPS)
+	cp 1
+	jp nz, _
+	ld a, 'B'
+	ret
+_:	ld a, (KPRGM)
+	cp 1
+	jp nz, _
+	ld a, 'C'
+	ret
+_:	ld a, (KINV)
+	cp 1
+	jp nz, _
+	ld a, 'D'
+	ret
+_:	ld a, (KSIN)
+	cp 1
+	jp nz, _
+	ld a, 'E'
+	ret
+_:	ld a, (KCOS)
+	cp 1
+	jp nz, _
+	ld a, 'F'
+	ret
+_:	ld a, (KTAN)
+	cp 1
+	jp nz, _
+	ld a, 'G'
+	ret
+_:	ld a, (KPOW)
+	cp 1
+	jp nz, _
+	ld a, 'H'
+	ret
+_:	ld a, (KSQR)
+	cp 1
+	jp nz, _
+	ld a, 'I'
+	ret
+_:	ld a, (KCOMMA)
+	cp 1
+	jp nz, _
+	ld a, 'J'
+	ret
+_:	ld a, (KLPAREN)
+	cp 1
+	jp nz, _
+	ld a, 'K'
+	ret
+_:	ld a, (KRPAREN)
+	cp 1
+	jp nz, _
+	ld a, 'L'
+	ret
+_:	ld a, (KDIV)
+	cp 1
+	jp nz, _
+	ld a, 'M'
+	ret
+_:	ld a, (KLOG)
+	cp 1
+	jp nz, _
+	ld a, 'N'
+	ret
+_:	ld a, (KSEVEN)
+	cp 1
+	jp nz, _
+	ld a, 'O'
+	ret
+_:	ld a, (KEIGHT)
+	cp 1
+	jp nz, _
+	ld a, 'P'
+	ret
+_:	ld a, (KNINE)
+	cp 1
+	jp nz, _
+	ld a, 'Q'
+	ret
+_:	ld a, (KMULT)
+	cp 1
+	jp nz, _
+	ld a, 'R'
+	ret
+_:	ld a, (KLN)
+	cp 1
+	jp nz, _
+	ld a, 'S'
+	ret
+_:	ld a, (KFOUR)
+	cp 1
+	jp nz, _
+	ld a, 'T'
+	ret
+_:	ld a, (KFIVE)
+	cp 1
+	jp nz, _
+	ld a, 'U'
+	ret
+_:	ld a, (KSIX)
+	cp 1
+	jp nz, _
+	ld a, 'V'
+	ret
+_:	ld a, (KMINUS)
+	cp 1
+	jp nz, _
+	ld a, 'W'
+	ret
+_:	ld a, (KSTO)
+	cp 1
+	jp nz, _
+	ld a, 'X'
+	ret
+_:	ld a, (KONE)
+	cp 1
+	jp nz, _
+	ld a, 'Y'
+	ret
+_:	ld a, (KTWO)
+	cp 1
+	jp nz, _
+	ld a, 'Z'
+	ret
+_:	ld a, (KTHREE)
+	cp 1
+	jp nz, _
+	ld a, '~'
+	ret
+_:	ld a, (KPLUS)
+	cp 1
+	jp nz, _
+	ld a, '"' ;"
+	ret
+_:	ld a, (KZERO)
+	cp 1
+	jp nz, _
+	ld a, ' '
+	ret
+_:	ld a, (KPERIOD)
+	cp 1
+	jp nz, _
+	ld a, '.'
+	ret
+_:	ld a, (KNEG)
+	cp 1
+	jp nz, _
+	ld a, '?'
+	ret
+_:	jp endTests
+numericTests:
+	ld a, (KZERO)
+	cp 1
+	jp nz, _
+	ld a, '0'
+	ret
+_:	ld a, (KONE)
+	cp 1
+	jp nz, _
+	ld a, '1'
+	ret
+_:	ld a, (KTWO)
+	cp 1
+	jp nz, _
+	ld a, '2'
+	ret
+_:	ld a, (KTHREE)
+	cp 1
+	jp nz, _
+	ld a, '3'
+	ret
+_:	ld a, (KFOUR)
+	cp 1
+	jp nz, _
+	ld a, '4'
+	ret
+_:	ld a, (KFIVE)
+	cp 1
+	jp nz, _
+	ld a, '5'
+	ret
+_:	ld a, (KSIX)
+	cp 1
+	jp nz, _
+	ld a, '6'
+	ret
+_:	ld a, (KSEVEN)
+	cp 1
+	jp nz, _
+	ld a, '7'
+	ret
+_:	ld a, (KEIGHT)
+	cp 1
+	jp nz, _
+	ld a, '8'
+	ret
+_:	ld a, (KNINE)
+	cp 1
+	jp nz, _
+	ld a, '9'
+	ret
+_:	ld a, (KCOMMA)
+	cp 1
+	jp nz, _
+	ld a, ','
+	ret
+_:	ld a, (KPERIOD)
+	cp 1
+	jp nz, _
+	ld a, ':'
+	ret
+_:	ld a, (KLPAREN)
+	cp 1
+	jp nz, _
+	ld a, '('
+	ret
+_:	ld a, (KRPAREN)
+	cp 1
+	jp nz, _
+	ld a, ')'
+	ret
+_:	ld a, (KDIV)
+	cp 1
+	jp nz, _
+	ld a, '/'
+	ret
+_:	ld a, (KMULT)
+	cp 1
+	jp nz, _
+	ld a, '*'
+	ret
+_:	ld a, (KPLUS)
+	cp 1
+	jp nz, _
+	ld a, '+'
+	ret
+_:	ld a, (KMINUS)
+	cp 1
+	jp nz, _
+	ld a, '-'
+	ret
+_:
+endTests:
+	jp waitForKeyPress
+	ret
+
+getKeyMatrix:
+	ld hl, KEYBUF
+	ld a, $FE
+	ld b, 7
+gkmFetchLoop:
+	push af
+	ld a, $FF
+	out (1), a
+	nop \ nop \ nop \ nop
+	pop af
+	out (1), a
+	nop \ nop \ nop \ nop
+	push af
+	in a, (1)
+	ld d, a
+	pop af
+	push af
+	push bc
+	ld b, 8
+gkmAssignLoop:
+	ld a, d
+	and 1
+	or %11111110
+	neg
+	dec a
+	ld (hl), a
+	rrc d
+	inc hl
+	djnz gkmAssignLoop
+	pop bc
+	pop af
+	rlca
+	djnz gkmFetchLoop
+	ret

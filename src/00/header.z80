@@ -1,0 +1,36 @@
+bootcode:
+	jp boot
+	
+	.db "SK" ; magic number
+	
+	.db $00 ; major ver
+	.db $01 ; minor ver
+	
+	.db $00 ; calculator metadata, ignore for now
+	
+	ret ; rst $08
+	
+.fill $10-$
+	ret ; rst $10
+	
+.fill $18-$
+	ret ; rst $18
+	
+.fill $20-$
+	ret ; rst $20
+	
+.fill $28-$
+	ret ; rst $28
+	
+.fill $30-$
+	ret ; rst $30
+	
+.fill $38-$
+	jp sysInt ; rst $38
+	
+.fill $53-$
+	jp boot
+	.db $FF, $A5, $FF
+	
+boot:
+	jp kernel

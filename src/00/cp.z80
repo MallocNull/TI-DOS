@@ -1,0 +1,10 @@
+CopyStart:
+.db $BB
+.dw EndOfCopy-Copy
+.db "cp.exe", 0 
+.fill (CopyStart + 24)-$
+
+.org $D000
+Copy:
+	ret
+EndOfCopy:

@@ -1,0 +1,21 @@
+ChangeDirStart:
+.db $BB
+.dw EndChangeDir-ChangeDir
+.db "cd.exe", 0 
+.fill (ChangeDirStart + 24)-$
+
+.org $D000
+ChangeDir:
+	pop hl
+	cp 1
+	jp nz, cderr
+	ret
+cderr:
+	ld hl, errmsg
+	call PrintString
+	ret
+errmsg:
+	.db "Invalid params", 10
+	.db "Syntax:", 10
+	.db " cd A:-Z:", 0
+EndChangeDir:

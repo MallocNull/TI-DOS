@@ -1,0 +1,123 @@
+kernel:
+	call Sleep
+kernelboot:
+	; init
+	di
+	ld sp, $00 ; prep stack ptr
+	
+	ld a, 6
+	out (4), a ; set memory mode 0
+	; memory layout:
+	;	$0000 - $3FFF : Page $00 ROM
+	;	$4000 - $7FFF : Page $00 - $1F ROM
+	;		Change this with SwapROMPage
+	;	$8000 - $BFFF : Page 1 RAM
+	;	$C000 - $FFFF : Page 0 RAM
+	
+	ld a, 1
+	call SwapRAMPage ; load RAM page 1
+	
+	ld a, PRIVPAGE
+	call SwapROMPage ; load privledged page into ROM
+	call $4001 ; unlock the flash
+	
+	ld a, $01
+	call SwapROMPage
+	
+	call freeall
+	
+	; init LCD
+	ld a, $00
+	out ($10), a ; set to 6-bit mode
+	call WaitForLCD
+	
+	ld a, $05
+	out ($10), a ; Y-increment
+	call WaitForLCD
+	
+	ld a, 118
+	ld (CLOCK), a
+	ld hl, $0000
+	ld (CLOCK+1), hl
+	ei
+	
+	ld a, $03
+	out ($10), a ; enable screen
+	call WaitForLCD
+	
+	call ClearScreen
+	
+	ld hl, tidos
+	call PrintLine
+	
+	ld a, 10
+	call PrintChar
+	
+	ld hl, 0
+	ld ($8DDD), hl
+	
+	; todo fix stack things i'm working on
+cmd:
+	ld hl, 0
+	ld sp, hl
+	
+	ld hl, caret
+	call PrintString
+	ld hl, $8600
+	call getLine
+	
+	ld ($8CDB), hl
+	ld b, 255
+	ld de, 0
+replaceloop:
+	ld a, (hl)
+	cp 32
+	jp nz, _
+	ld c, a
+	xor a
+	ld (hl), a
+	inc hl \ inc de
+	;push hl
+	dec hl
+	ld a, c
+_:	cp 0
+	jp z, replaceloopexit
+	inc hl
+	djnz replaceloop
+replaceloopexit:
+	;push de
+	ld hl, ($8CDB)
+	
+	ld de, $8900
+	call strcpy
+	push de
+	pop hl
+	dec hl
+	ld (hl), '.'
+	inc hl \ ld (hl), 'e'
+	inc hl \ ld (hl), 'x'
+	inc hl \ ld (hl), 'e'
+	inc hl \ ld (hl), 0
+	
+	ld hl, $8900
+	call FindFile
+	
+	xor a
+	or h
+	or l
+	cp 0
+	jp z, notfound
+	call LoadProgram
+	call $D000
+	jp cmd
+notfound:
+	ld hl, filenotfound
+	call PrintLine
+	jp cmd
+
+tidos:
+	.db "TI-DOS v0.1", 10, 252, " 2013 Malloc", 0
+caret:
+	.db 32, 10, 255, 0
+filenotfound:
+	.db "Bad cmd/file", 0

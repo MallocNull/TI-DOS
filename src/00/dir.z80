@@ -1,0 +1,49 @@
+DirectoryListingStart:
+.db $BB
+.dw EndOfDirectoryListing-DirectoryListing
+.db "dir.exe", 0 
+.fill (DirectoryListingStart + 24)-$
+
+.org $D000
+
+DirectoryListing:
+	ld hl, SYSPROG
+DirectoryListingLoop:
+	ld a, (hl)
+	cp $BB
+	jp nz, DirectoryListingLoopContinue
+	push hl
+	ld hl, tmpbuf
+	ld b, 21
+	ld d, 0
+DirectoryListingClearLoop:
+	ld (hl), d
+	inc hl
+	djnz DirectoryListingClearLoop
+	pop hl
+	inc hl \ ld e, (hl)
+	inc hl \ ld d, (hl)
+	inc hl
+	push de
+	push hl
+	ld de, tmpbuf
+	call strcpy
+	ld a, 10
+	dec de
+	ld (de), a
+	ld hl, tmpbuf
+	call PrintString
+	pop hl
+	pop de
+	adc hl, de
+DirectoryListingLoopContinue:
+	xor a
+	or h
+	or l
+	inc hl
+	cp $80
+	jp nz, DirectoryListingLoop
+	ret
+tmpbuf:
+.block 21
+EndOfDirectoryListing:

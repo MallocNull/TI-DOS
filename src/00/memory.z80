@@ -1,0 +1,140 @@
+; swaps out what ROM page should be loaded at $4000
+; inputs:
+;	a: ROM page from $00 to $1F
+SwapROMPage:
+	out (6), a
+	ret
+
+; determines what ROM page is loaded at $4000
+; outputs:
+;	a: ROM page from $00 to $1F
+GetROMPage:
+	in a, (6)
+	ret
+
+; swaps out what RAM page should be loaded at $8000
+; inputs:
+;	a: RAM page from $00 to $01
+SwapRAMPage:
+	or RAMMASK
+	out (7), a
+	ret
+
+; copies a block of memory to another block of memory
+; input:
+;	hl: pointer to block being copied
+;	de: pointer to block copying to
+;	bc: size of block
+memcpy:
+	ldir
+	ret
+	
+; allocates a block of memory
+; input:
+;	de: size in bytes
+; output:
+;	hl: pointer to memory
+; special conditions:
+;	hl is 0 when allocation fails
+malloc:
+	di
+	ld hl, FREEMEM
+	inc de \ inc de \ inc de
+	ld bc, 0
+mallocloop:
+	push hl
+	push de
+	pop hl
+	ccf
+	sbc hl, bc
+	pop hl
+	jp z, mallocend
+	push bc
+	push hl
+	ld bc, PROGRAMRESERVE
+	ccf
+	sbc hl, bc
+	pop hl
+	pop bc
+	jp z, mallocfail
+	ld a, (hl)
+	cp $AA
+	jp z, mallocblockfound
+	inc hl
+	inc bc
+	jp mallocloop
+mallocblockfound:
+	inc hl
+	ld bc, 0
+	push de
+	ld e, (hl)
+	inc hl
+	ld d, (hl)
+	add hl, de
+	inc hl
+	pop de
+	jp mallocloop
+mallocend:
+	ccf
+	sbc hl, de
+	inc hl
+	ld (hl), $AA
+	inc hl
+	dec de \ dec de \ dec de
+	ld (hl), e
+	inc hl
+	ld (hl), d
+	inc hl
+	ei
+	ret
+mallocfail
+	ld hl, 0
+	ei
+	ret
+
+; frees a block of memory
+; input:
+;	hl: memory address
+; todo rewrite this with ldir
+free:
+	dec hl
+	ld d, (hl)
+	dec hl
+	ld e, (hl)
+	dec hl
+	ld a, (hl)
+	cp $AA
+	jp nz, freenotvalidblock
+	inc de \ inc de \ inc de
+	ld bc, 0
+freeloop:
+	ld (hl), 0
+	inc hl
+	inc bc
+	push hl
+	push de
+	pop hl
+	ccf
+	sbc hl, bc
+	pop hl
+	jp nz, freeloop
+freenotvalidblock:
+	ret
+
+; overwrites all freemem and progspace with zeroes
+; no inputs, no outputs
+; todo rewrite this with ldir
+freeall:
+	di
+	ld hl, SYSRESERVE-1
+	ld de, STACKRESERVE-2
+allfreeloop:
+	inc hl
+	ld (hl), 0
+	push hl
+	sbc hl, de
+	pop hl
+	jp nz, allfreeloop
+	ei
+	ret
+	

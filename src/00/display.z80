@@ -1,0 +1,262 @@
+WaitForLCD:
+	push af
+_wfl_loop:
+	in a, ($10)
+	bit 7, a
+	jp nz, _wfl_loop
+	pop af
+	ret
+	
+; clears the screen buffer
+; no inputs, no outputs
+ClearScreen:
+	call ClearScreenBuffer
+	call DrawScreenBuffer
+	ret
+
+ClearScreenBuffer:
+	di
+	ld hl, SCREENBLOCK
+	ld (SCREENPTR), hl
+	ld (CLOCK+4), sp
+	ld sp, SCREENBLOCK+(16*8)
+	ld hl, $0000
+	ld b, 64
+csbloop:
+	push hl
+	djnz csbloop
+	ld sp, (CLOCK+4)
+	
+	ld a, $80
+	out ($10), a
+	call WaitForLCD
+	ld a, $20
+	out ($10), a
+	call WaitForLCD
+	
+	ei
+	ret
+
+; prints string specified by hl, then breaks the line
+; inputs:
+;	hl: string ptr
+PrintLine:
+	call PrintString
+	
+	ld a, 10	\	ld ($8400), a
+	xor a		\	ld ($8401), a
+	
+	ld hl, $8400
+	call PrintString
+	ret
+	
+; toggles cursor
+ToggleCursor:
+	ld hl, (SCREENPTR)
+	push de
+	ld de, SCREENBLOCK
+	ccf
+	sbc hl, de
+	inc hl
+	pop de
+	ld d, 16
+	call DivideHLD
+	ld c, a
+	
+	push bc
+	push hl
+	pop de
+	ld a, 8
+	call MultiplyDEA
+	push hl
+	pop de
+	pop bc
+	
+	ld a, $80
+	add a, e
+	out ($10), a
+	call WaitForLCD
+	
+	ld a, $20
+	add a, c
+	out ($10), a
+	call WaitForLCD
+	
+	ld a, ($8AED)
+	cp 1
+	jp nz, _
+	ld hl, cursor
+	ld b, 8
+tconloop:
+	ld a, (hl)
+	out ($11), a
+	call WaitForLCD
+	inc hl
+	djnz tconloop
+	
+	ld a, 0
+	ld ($8AED), a
+	ret
+_:	
+	ld hl, cursorblank
+	ld b, 8
+tcoffloop:
+	ld a, (hl)
+	out ($11), a
+	call WaitForLCD
+	inc hl
+	djnz tcoffloop
+	
+	ld a, 1
+	ld ($8AED), a
+	ret
+cursor:
+	.db %111110
+	.db %111110
+	.db %111110
+	.db %111110
+	.db %111110
+	.db %111110
+	.db %111110
+	.db %000000
+cursorblank:
+	.db 0
+	.db 0
+	.db 0
+	.db 0
+	.db 0
+	.db 0
+	.db 0
+	.db 0
+	.db 0
+	
+; prints a single character
+; inputs:
+;	a: character
+PrintChar:
+	ld ($8400), a
+	xor a \ ld ($8401), a
+	
+	ld hl, $8400
+	call PrintString
+	ret
+	
+; prints string to current cursor position
+; inputs:
+;	hl: string ptr
+PrintString:
+	ld bc, (SCREENPTR)
+psloop:
+	ld a, c
+	cp 128
+	jp z, psloadnewline
+	ld a, (hl)
+	cp 0
+	jp z, psexitloop
+	cp 10
+	jp z, pslinebreak
+	ld (bc), a
+	inc hl
+	inc bc
+	ld (SCREENPTR), bc
+	jp psloop
+psloadnewline:
+	push hl
+	
+	ld hl, SCREENBLOCK+16
+	ld de, SCREENBLOCK
+	ld bc, 16*7
+	ldir
+	
+	ld hl, SCREENBLOCK+(16*7)
+	ld b, 16
+	ld a, $00 
+psloadnewlineloop:
+	ld (hl), a
+	inc hl
+	djnz psloadnewlineloop
+	
+	ld bc, SCREENBLOCK+(16*7)
+	ld (SCREENPTR), bc
+	
+	pop hl
+	jp psloop
+pslinebreak:
+	ld a, c
+	cp 16
+	jp z, pslbexitloop
+	cp 32
+	jp z, pslbexitloop
+	cp 48
+	jp z, pslbexitloop
+	cp 64
+	jp z, pslbexitloop
+	cp 80
+	jp z, pslbexitloop
+	cp 96
+	jp z, pslbexitloop
+	cp 112
+	jp z, pslbexitloop
+	cp 128
+	jp z, pslbexitloop
+	inc bc
+	ld (SCREENPTR), bc
+	jp pslinebreak
+pslbexitloop:
+	inc hl
+	jp psloop
+psexitloop:
+	call DrawScreenBuffer
+	ret
+	
+DrawScreenBuffer:
+	di
+	ld c, 0
+dsbreprow:
+	ld a, $80
+	out ($10), a
+	call WaitForLCD
+	ld a, $20
+	add a, c
+	out ($10), a
+	call WaitForLCD
+	
+	ld hl, SCREENBLOCK
+	ld b, 0
+	add hl, bc 
+	ld b, 8
+dsbwriterow:
+	push hl
+	push af
+	push bc
+	push de
+	
+	ld d, 0
+	ld e, (hl)
+	ld a, 8
+	call MultiplyDEA
+	ld bc, characterIndex
+	add hl, bc
+	
+	ld b, 8
+_dsblooper:
+	ld a, (hl)
+	out ($11), a
+	call WaitForLCD
+	inc hl
+	djnz _dsblooper
+	
+	pop de
+	pop bc
+	pop af
+	pop hl
+	
+	ld de, 16
+	add hl, de
+	djnz dsbwriterow
+	inc c
+	ld a, c
+	cp 16
+	jp nz, dsbreprow
+	ei
+	ret

@@ -1,0 +1,166 @@
+; loads a program from ROM into memory
+; inputs:
+;	hl: file pointer
+LoadProgram:
+	ld de, 23
+	ccf
+	sbc hl, de
+	ld a, (hl)
+	cp $BB
+	jp nz, LoadProgramError
+	inc hl \ ld e, (hl)
+	inc hl \ ld d, (hl)
+	ld bc, 21
+	ccf
+	adc hl, bc
+	ld bc, PROGRAMRESERVE
+LoadProgramLoop:
+	ld a, (hl)
+	ld (bc), a
+	inc bc \ inc hl \ dec de
+	ld a, 0
+	or d
+	or e
+	cp 0
+	jp nz, LoadProgramLoop
+LoadProgramError:
+	ret
+	
+; gets file pointer from file name
+; inputs:
+;	hl: string ptr to file name
+; outputs:
+;	hl: file ptr
+; special conditions:
+;	hl is 0 when file is not found
+FindFile:
+	ld de, SYSPROG
+	ld ($8300), hl
+feloop:
+	ld a, (de)
+	cp $BB
+	jp nz, fecheckskip
+	
+	push de
+	inc de \ ld a, (de) \ ld c, a
+	inc de \ ld a, (de) \ ld b, a
+	inc de
+festrcmp:
+	ld a, (de)
+	cp (hl)
+	jp z, fecheckifmatching
+	pop de
+	push hl
+	push de
+	pop hl
+	ccf
+	adc hl, bc
+	ld bc, 23
+	ccf
+	adc hl, bc
+	dec hl
+	push hl
+	pop de
+	pop hl
+	ld hl, ($8300)
+	jp feloop
+fecheckifmatching:
+	cp 0
+	inc de \ inc hl
+	jp nz, festrcmp
+	pop hl
+	ld bc, 23
+	ccf
+	adc hl, bc
+	ret
+fecheckskip:
+	inc de
+	push hl
+	ld hl, $7fff
+	ccf
+	sbc hl, de
+	inc hl
+	xor a
+	or h
+	or l
+	cp 0
+	pop hl
+	jp nz, feloop
+	ld hl, 0
+	ret
+
+; writes a buffer to flash memory
+; inputs:
+;	de: location of buffer
+;	hl: location to write to
+;	bc: size of buffer
+WriteFlashBuffer:
+	di
+	call LoadFlashWriterToRAM
+wfbloop:
+	ld a, (de)
+	
+	push af
+	push bc
+	push de
+	call $8500
+	pop de
+	pop bc
+	pop af
+	
+	inc hl
+	inc de
+	dec bc
+	ld a, 0
+	or b
+	or c
+	cp 0
+	jp nz, wfbloop
+	ei
+	ret
+	
+; writes a byte to flash memory
+; inputs:
+;	hl: location to write
+;	a: byte to write
+WriteFlashByte:
+	di
+	call LoadFlashWriterToRAM
+	call $8500
+	ei
+	ret
+	
+LoadFlashWriterToRAM:
+	push hl
+	push bc
+	push de
+	ld hl, WriteFlashByteRAM
+	ld de, $8500
+	ld bc, WriteFlashByteRAMEnd-WriteFlashByteRAM
+	ldir
+	pop de
+	pop bc
+	pop hl
+	ret
+
+WriteFlashByteRAM:
+	and (hl)
+	ld b, a
+		ld a, $AA
+		ld ($0AAA), a
+		ld a, $55
+		ld ($0555), a
+		ld a, $A0
+		ld ($0AAA), a
+	ld (hl), b
+_:
+	ld a, b
+	xor (hl)
+	bit 7, a
+	jr z, WriteFlashByteRAMDone
+	bit 5, (hl)
+	jr z, -_
+WriteFlashByteRAMDone:
+	ld (hl), $F0
+	ret
+WriteFlashByteRAMEnd:
