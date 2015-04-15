@@ -1,7 +1,5 @@
 .org $0000
 
-; niggers
-
 #define SYSPROG $2000 ; todo figure out if i can decrease this later
 #define SYSRESERVE $8000
 #define FREEMEM $9000
